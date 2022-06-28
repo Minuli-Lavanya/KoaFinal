@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <section style="margin-left: 2cm;">
+      <h2>Backend</h2>
+      <h2>index.js</h2>
+
+      require("dotenv").config();<br>
+      const Koa = require("koa");<br>
+      const KoaRouter = require("koa-router");<br>
+      const cors = require("@koa/cors");<br>
+      const bodyParser = require("koa-bodyparser");<br>
+      const json = require("koa-json");<br><br>
+      
+      const { dbConnect } = require("./utils/dbConnect");<br><br>
+      
+      const courseRoutes = require("./routes/course.routes");<br>
+      const studentRoutes = require("./routes/student.routes") ;<br>
+      const teacherRoutes = require("./routes/teacher.routes");<br><br>
+      
+      const app = new Koa();<br>
+      const router = new KoaRouter();<br><br>
+      
+      app.use(cors());<br>
+      app.use(bodyParser());<br>
+      app.use(json());<br><br>
+      
+      app.use(router.routes()).use(router.allowedMethods());<br><br>
+      
+      app.use(courseRoutes.routes());<br>
+      app.use(studentRoutes.routes());<br>
+      app.use(teacherRoutes.routes());<br><br>
+      
+      router.get("/", (ctx) => {<br>
+          ctx.body = {<br>
+              message : "student management API"<br>
+          }<br>
+      });<br><br>
+      
+      app.listen(9000, () => {<br>
+          dbConnect();<br>
+          console.log(`Server is up and running on http://localhost:9000`);<br>
+      });<br>
+
+  <h2>dbConnect.js</h2>
+
+  <br>const mongoose = require("mongoose");<br><br>
+      
+      const dbConnect = () => {<br>
+        const dbConStr = process.env.MONGODB_URL;<br><br>
+      
+        mongoose.connect(dbConStr, () => {<br>
+          console.log("__Database connected__");<br>
+        });<br>
+      };<br>
+      
+      module.exports = { dbConnect };<br><br>
+
+  <h2>.env</h2><br>
+
+      // MONGODB_URL = mongodb://localhost:27017/managementdb<br>
+      //MONGODB_URL = mongodb+srv://s------:L----123@cluster0.kga7s.mongodb.net/sp1_db?retryWrites=true&w=majority<br><br>
+
+  <h2>model</h2>
+  <h2>course.model.js</h2>
+
+  <br> const mongoose = require("mongoose");<br><br>
+      
+      const CourseSchema = new mongoose.Schema({<br><br>
+      
+          courseName : {<br>
+              type: String,<br>
+              required: true<br>
+          },<br><br>
+      
+          courseFee : {<br>
+              type: String,<br>
+              required: true<br>
+          },<br><br>
+      
+          students : [{<br>
+              type: mongoose.Schema.Types.ObjectId,<br>
+              required: false,<br>
+              ref: "students"<br>
+          }],<br>
+      });<br><br>
+      
+      const Course = mongoose.model("courses", CourseSchema);<br>
+      module.exports = Course;<br>
+
+  <h2>student.model.js</h2>
+
+      const mongoose = require("mongoose");<br><br>
+      
+      const StudentSchema = new mongoose.Schema({<br>
+      
+          name : {<br>
+              type: String,<br>
+              required: true<br>
+          },<br><br>
+      
+          nic : {<br>
+              type: String,<br>
+              required: true<br>
+          },<br><br>
+      
+          age : {<br>
+              type: Number,<br>
+              required: true<br>
+          },<br><br>
+      
+          courseId : {<br>
+              type: mongoose.Schema.Types.ObjectId,<br>
+              required: false,<br>
+              ref: "courses"<br>
+          },<br>
+      });<br>
+      
+      const Student = mongoose.model("students", StudentSchema);<br>
+      module.exports = Student;<br>
+
+  <h2>teacher.model.js</h2>
+
+      const mongoose = require("mongoose");<br><br>
+      
+      const TeacherSchema = new mongoose.Schema({<br>
+      
+          name: {<br>
+              type: String,<br>
+              required: true<br>
+          },<br><br>
+      
+          salary: {<br>
+              type: Number,<br>
+              required: true<br>
+          }<br>
+      })<br>
+      
+      const Teacher = mongoose.model("teachers", TeacherSchema);<br>
+      module.exports = Teacher;<br><br>
+
+  <h2>controller</h2>
+  <h2>course.controller.js</h2>
+
+  <br>const Course = require("../models/course.model");<br>
+      
+      const addCourese = async (ctx) => {<br>
+          
+          try{<br>
+              const { courseName, courseFee, students } = ctx.request.body;<br><br>
+      
+              const course = await Course.create({<br>
+                  courseName: courseName,<br>
+                  courseFee: courseFee,<br>
+                  students: students,<br>
+              });<br>
+              return (ctx.body = course );  <br>
+          }catch(error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const getCourse = async (ctx) => {<br>
+      
+          try {<br>
+              const courses = await Course.find().populate({<br>
+                  path: "students",<br>
+                  select: "name nic age",<br>
+              });<br>
+              return (ctx.body =  courses );<br>
+      
+          } catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const updateCourse = async (ctx) => {<br>
+          try {<br>
+      
+              const courseId = ctx.params.courseId;<br>
+      
+              const { courseName, courseFee, students } = ctx.request.body;<br>
+      
+              const course = await Course.findByIdAndUpdate(courseId, {<br>
+                  courseName: courseName,<br>
+                  courseFee: courseFee,<br>
+                  students: students,<br>
+              });<br>
+              return (ctx.body = course);<br>
+          } catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const deleteCourse =  async (ctx) => {<br>
+      
+          try {<br>
+              
+              const courseId = ctx.params.courseId;<br>
+              const course = await Course.findByIdAndDelete(courseId);<br>
+              return (ctx.body = course);<br>
+      
+          }catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      }<br>
+      
+      module.exports = {<br>
+          addCourese, getCourse, updateCourse,deleteCourse,<br>
+      }; <br>
+
+
+  <h2>student.controller.js</h2>
+
+      const Student = require("../models/student.model");<br>
+      const Course = require("../models/course.model");<br><br>
+      
+      const addStudents = async (ctx) => {<br>
+      
+          try {<br>
+      
+              const { name, nic, age, courseId } = ctx.request.body;<br>
+              const student = await Student. create ({<br>
+                  name,
+                  nic,
+                  age,
+                  courseId
+              });<br>
+      
+              await Course.findByIdAndUpdate(courseId, {$push: { students: student._id } });<br>
+      
+              return (ctx.body = student);<br>
+      
+          } catch(error) {<br>
+              return (ctx.body = { message : error.message });<br>
+          }<br>
+      };<br><br>
+      
+      
+      
+      const getStudents = async (ctx) => {<br>
+        try {<br>
+          const students = await Student.find().populate({<br>
+            path: "courseId",<br>
+            select: "courseName courseFee",<br>
+          });<br>
+            return (ctx.body = students);<br>
+        } catch (error) {<br>
+          return (ctx.body = { message: error.message });<br>
+        }<br>
+      };<br><br>
+      
+      const updateStudent = async (ctx) => {<br>
+      
+        try {<br>
+      
+          const studentId = ctx.params.studentId;<br>
+          const { name, nic, age, courseId } = ctx.request.body;<br><br>
+      
+          const student = await Student.findByIdAndUpdate(studentId, {<br>
+            name,
+            nic,
+            age,
+            courseId,
+          });<br>
+      
+          await Course.findByIdAndUpdate(student.courseId, {<br>
+            $pull: { students: studentId },<br>
+          });<br>
+      
+          await Course.findByIdAndUpdate(courseId, {<br>
+            $push: {students: studentId },<br>
+          });<br>
+      
+          return (ctx.body = { message: error.message });<br>
+      
+        } catch (error) {<br>
+          return (ctx.body = { message: error.message });<br>
+        }<br>
+      };<br><br>
+      
+      const deleteStudent = async (ctx) => {<br>
+      
+        try {<br>
+          const studentId = ctx.params.studentId;<br>
+      
+          const student = await student.findById(studentId);<br>
+      
+          await Course.findByIdAndUpdate(student.courseId, { <br>
+            $pull: { students: studentId }<br>
+          });<br>
+      
+          await Student.findByIdAndDelete(studentId);<br>
+      
+          return (ctx.body = student);<br>
+      
+        }catch (error) {<br>
+          return (ctx.body = { message: error.message });<br>
+        }<br>
+      
+      };<br>
+      
+      module.exports = {<br>
+          addStudents,  getStudents, updateStudent, deleteStudent,<br>
+      };<br><br>
+
+  <h2>teacher.controller.js</h2>
+
+      const Teacher = require("../models/teacher.model");<br><br>
+      
+      const addTeacher = async (ctx) => {<br>
+      
+          try{<br>
+              const { name, salary } = ctx.request.body;<br>
+      
+              const teacher = await Teacher.create({<br>
+                  name,
+                  salary,
+              });<br>
+              return (ctx.body = teacher);<br>
+          } catch (error){<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const getTeachers = async (ctx) => {<br>
+          try {<br>
+              const teachers = await Teacher.find({});<br>
+              return (ctx.body = teachers );<br>
+          } catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const editTeacher = async (ctx) => {<br>
+          try {<br>
+      
+              const teacherId = ctx.params.teacherId;<br>
+              const { name, salary } = ctx.request.body;<br>
+              const teacher = await Teacher.findByIdAndUpdate(teacherId, {<br>
+                  name, 
+                  salary,
+              });<br>
+              return (ctx.body = teacher);<br>
+          } catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      const deleteTeacher = async (ctx) => {<br>
+          try{<br>
+              const teacherId = ctx.params.teacherId;<br>
+              const teacher = await Teacher.findByIdAndDelete(teacherId);<br>
+              return (ctx.body = teacher);<br>
+          }catch (error) { <br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      }<br>
+      module.exports = {<br>
+          addTeacher, getTeachers, editTeacher, deleteTeacher,<br>
+      };<br>
+
+  <h2>routes</h2>
+  <h2>course.routes.js</h2>
+
+      const koaRouter = require("koa-router");<br>
+      const router = new koaRouter({ prefix: "/course" });<br><br>
+      
+      const { addCourese, getCourse, updateCourse, deleteCourse } = require("../controller/course.controller");<br><br>
+      
+      router.post("/add", addCourese);<br>
+      router.delete("/:courseId", deleteCourse);<br>
+      router.put("/:courseId", updateCourse);<br>
+      router.get("/", getCourse);<br><br>
+      
+      module.exports = router;<br><br><br>
+
+  <h2>student.routes.js</h2>
+
+      const koaRouter = require("koa-router");<br>
+      const router = new koaRouter({ prefix: "/student" })<br><br>
+      
+      const { addStudents, getStudents, deleteStudent, updateStudent } = require("../controller/student.controller");<br><br>
+      
+      router.post("/add", addStudents);<br>
+      router.delete("/:studentId", deleteStudent);<br>
+      router.put("/:studentId", updateStudent);<br>
+      router.get("/", getStudents);<br><br>
+      
+      module.exports = router;<br><br>
+
+  <h2>teacher.routes.js</h2>
+
+      const KoaRouter = require("koa-router");<br>
+      const router = new KoaRouter({prefix: "/teacher"});<br><br>
+      
+      const { addTeacher, getTeachers, editTeacher, deleteTeacher }=require("../controller/teacher.controller");<br><br>
+      
+      router.post("/add", addTeacher);<br>
+      router.put("/:teacherId", editTeacher);<br>
+      router.delete("/:teacherId", deleteTeacher);<br>
+      router.get("/", getTeachers);<br><br>
+      
+      module.exports = router;<br>
+  ======================================================================================================================
+  <h2>Frontend</h2>
+  <h2>Course.js</h2>
+
+      import React, { useEffect, useState } from "react";<br>
+      import axios from "axios";<br>
+      
+      const CoursePage = () => {<br>
+        const [courseName, setCourseName] = useState("");<br>
+        const [courseFee, setCourseFee] = useState("");<br>
+        const [courses, setCourses] = useState([]);<br>
+        const [isEditClick, setIsEditClick] = useState(false);<br>
+        const [editId, setEditId] = useState("");<br><br>
+      
+        const [editName, setEditName] = useState("");<br>
+        const [editFee, setEditFee] = useState("");<br>
+      
+        useEffect(() => {<br>
+          axios.get(`${process.env.BASE_URL}/course/`).then((res) => {<br>
+            setCourses(res.data);<br>
+          });<br>
+        }, []);<br><br>
+      
+        const saveData = (e) => {<br>
+          e.preventDefault();<br>
+          const courseObj = {<br>
+            courseName,<br>
+            courseFee,<br>
+          };<br><br>
+      
+          axios
+            .post(`${process.env.BASE_URL}/course/add`, courseObj)
+            .then((res) => {<br>
+              alert("Data added");<br>
+              axios.get(`${process.env.BASE_URL}/course/`).then((res) => {<br>
+                setCourses(res.data);<br>
+              });<br>
+              setCourseName("");<br>
+              setCourseFee("");<br>
+            })<br>
+            .catch((err) => {<br>
+              alert(err.message);<br>
+            });<br>
+        };<br><br>
+      
+        const updateData = (e) => {<br>
+          e.preventDefault();<br>
+          const courseObj = {<br>
+            courseName: editName,<br>
+            courseFee: editFee,<br>
+          };<br>
+          console.log(courseObj);<br><br>
+      
+          axios<br>
+            .put(`${process.env.BASE_URL}/course/${editId}`, courseObj)<br>
+            .then((res) => {<br>
+              alert("Course Updated");<br>
+              axios.get(`${process.env.BASE_URL}/course/`).then((res) => {<br>
+                setCourses(res.data);<br>
+              });<br>
+              setIsEditClick(false);<br>
+            })<br>
+            .catch((err) => {<br>
+              alert(err.message);<br>
+            });<br>
+        };<br><br>
+      
+        const deleteCourse = (e) => {<br>
+          e.preventDefault();<br>
+          axios<br>
+            .delete(`${process.env.BASE_URL}/course/${e.target.id}`)<br>
+            .then(() => {<br>
+              axios.get(`${process.env.BASE_URL}/course/`).then((res) => {<br>
+                setCourses(res.data);<br>
+              });<br>
+            })<br>
+            .catch((err) => {<br>
+              alert(err.message);<br>
+            });<br>
+        };<br><br>
+      
+        const onEditClick = (e) => {<br>
+          e.preventDefault();<br>
+          setEditId(e.target.id);<br>
+          setIsEditClick(!isEditClick);<br><br>
+      
+          const course = courses.find((course) => course._id === e.target.id);<br>
+          setEditName(course.courseName);<br>
+          setEditFee(course.courseFee);<br>
+        };<br><br>
+      
+        return (<br>
+        &#60;div&#62;<br>
+        &#60;h1&#62;Course Page&#60;/h1&#62;<br>
+        &#60;div&#62;<br>
+        &#60;input<br>
+                type="text"<br>
+                placeholder="Enter course name"<br>
+                value={courseName}<br>
+                style={{ margin: 5 }}<br>
+                onChange={(e) => setCourseName(e.target.value)}<br>
+              /&#62;<br><br>
+              &#60;input<br>
+                type="number"<br>
+                placeholder="Enter course free"<br>
+                value={courseFee}<br>
+                style={{ margin: 5 }}<br>
+                onChange={(e) => setCourseFee(e.target.value)}<br>
+              /><br>
+              &#60;button onClick={(e) => saveData(e)} style={{ margin: 5 }}><br>
+                Submit<br>
+                &#60;/button><br>
+                &#60;br /><br><br>
+      
+                &#60;table><br>
+                &#60;tr><br>
+                &#60;th>Course Name&#60;/th><br>
+                &#60;th>Course Fee&#60;/th><br>
+                &#60;th>Actions&#60;/th><br>
+                &#60;/tr><br>
+                {courses &&<br>
+                  courses.length > 0 &&<br>
+                  courses.map((course, index) => (<br>
+                    &#60;tr key={index}><br>
+                    &#60;td><br>
+                        {isEditClick && course._id === editId ? (<br>
+                          &#60;input<br>
+                            type="text"<br>
+                            value={editName}<br>
+                            onChange={(e) => setEditName(e.target.value)}<br>
+                          /><br>
+                        ) : (<br>
+                          course.courseName<br>
+                        )}<br>
+                        &#60;/td><br>
+                        &#60;td><br>
+                        {isEditClick && course._id === editId ? (<br>
+                          &#60;input<br>
+                            type="number"<br>
+                            value={editFee}<br>
+                            onChange={(e) => setEditFee(e.target.value)}<br>
+                          /><br>
+                        ) : (<br>
+                          course.courseFee<br>
+                        )}<br>
+                        &#60;/td><br><br>
+                        &#60;td><br>
+                        &#60;button id={course._id} onClick={(e) => onEditClick(e)}><br>
+                          {isEditClick && course._id === editId ? "Cancel" : "Update"}<br>
+                          &#60;/button><br><br>
+                        {isEditClick && course._id === editId && (<br>
+                          &#60;button onClick={(e) => updateData(e)}>Save&#60;/button><br>
+                        )}<br>
+                        &#60;button id={course._id} onClick={(e) => deleteCourse(e)}><br>
+                          Delete<br>
+                          &#60;/button><br>
+                          &#60;/td><br>
+                          &#60;/tr><br>
+                  ))}<br>
+                  &#60;/table><br>
+                  &#60;/div><br>
+                  &#60;/div><br>
+        );<br>
+      };<br>
+      
+      export default CoursePage;<br><br>
+
+  <h2>Student.js</h2>
+
+      import React, { useEffect, useState } from "react";<br>
+      import axios from "axios";<br><br>
+      
+      const StudentPage = () => {<br><br>
+      
+      const [name, setName] = useState("");<br>
+      const [nic, setNIC] = useState("");<br>
+      const [age, setAge] = useState("");<br>
+      const [courseId, setCourseId] = useState("");<br><br>
+      
+      const [students, setStudents] = useState([]);<br>
+      const [courses, setCourses] = useState([]);<br><br>
+      
+      const [isEditClick, setIsEditClick] = useState(false);<br>
+      const [editName, setEditName] = useState("");<br>
+      const [editNIC, setEditNIC] = useState("");<br>
+      const [editAge, setEditAge] = useState("");<br>
+      const [editCourseId, setEditCourseId] = useState("");<br><br>
+      
+      useEffect(() => {<br>
+        axios.get(`${process.env.BASE_URL}/course/`).then((res) => {<br>
+          setCourses(res.data);<br>
+        });<br>
+        axios.get(`${process.env.BASE_URL}/student/`).then((res) => {<br>
+          setStudents(res.data);<br>
+        });<br>
+      }, []);<br><br>
+      
+      
+      const addStudent = (e) => {<br>
+        e.preventDefault();<br>
+      
+          const studentObj = {<br>
+            name,
+            nic,
+            age,
+            courseId,
+        
+          };<br><br>
+      
+          axios<br>
+          .post(`${process.env.BASE_URL}/student/add`, studentObj)<br>
+          .then((res) => {<br>
+            alert("Data added");<br>
+            axios.get(`${process.env.BASE_URL}/student/`).then((res) => {<br>
+              setStudents(res.data);<br>
+            });<br>
+            setName("");<br>
+            setNIC("");<br>
+            setAge("");<br>
+            setCourseId("");<br>
+            
+          })<br>
+          .catch((err) => {<br>
+            alert(err.message);<br>
+          });<br>
+      };<br><br>
+      
+      const updateStudent = (e) => {<br>
+        e.preventDefault();<br>
+      };<br><br>
+      
+        const deleteStudent = (e) => {<br>
+          e.preventDefault();<br>
+          axios<br>
+            .delete(`${process.env.BASE_URL}/student/${e.target.id}`)<br>
+            .then(() => {<br>
+              axios.get(`${process.env.BASE_URL}/student/`).then((res) => {<br>
+                setStudents(res.data);<br>
+              });<br>
+            })<br>
+            .catch((err) => {<br>
+              alert(err.message);<br>
+            });<br>
+        };<br><br>
+      
+      const onEditClick = (e) => {<br>
+        e.preventDefault();<br>
+        const student = students.find((student) => {<br>
+          student._id === e.target.id;<br>
+        });<br>
+        if (student) {<br>
+          setEditName(student.name);<br>
+          setEditAge(student.age);<br>
+          setEditNIC(student.nic);<br>
+          setIsEditClick(true);<br>
+        }<br>
+      };<br><br>
+      
+      return (<br>
+      &#60;div><br>
+      &#60;h1>Student Page&#60;/h1><br>
+      &#60;div style={{ marginBottom: 5 }}><br>
+      &#60;input<br>
+              type="text"<br>
+              placeholder="Enter name"<br>
+              value={name}<br>
+              style={{ margin: 5 }}<br>
+              onChange={(e) => setName(e.target.value)}<br>
+            /><br><br>
+            &#60;input<br>
+              type="text"<br>
+              placeholder="Enter nic"<br>
+              value={nic}<br>
+              style={{ margin: 5 }}<br>
+              onChange={(e) => setNIC(e.target.value)}<br>
+            /><br><br>
+            &#60;input<br>
+              type="number"<br>
+              placeholder="Enter age"<br>
+              value={age}<br>
+              style={{ margin: 5 }}<br>
+              onChange={(e) => setAge(e.target.value)}<br>
+            /><br><br>
+            &#60;select onChange={(e) => setCourseId(e.target.value)}><br>
+              {courses &&<br>
+                courses.length > 0 &&<br>
+                courses.map((course, index) => (<br>
+                  &#60;option value={course._id} key={index}><br>
+                    {course.courseName}<br>
+                    &#60;/option><br>
+                ))}<br>
+                &#60;/select><br>
+                &#60;button onClick={(e) => addStudent(e)} style={{ margin: 5 }}><br>
+              Submit<br>
+              &#60;/button><br>
+              &#60;/div><br><br>
+      
+              &#60;table><br>
+              &#60;tr><br>
+              &#60;th>Name&#60;/th><br>
+              &#60;th>NIC&#60;/th><br>
+              &#60;th>Age&#60;/th><br>
+              &#60;th>Course&#60;/th><br>
+              &#60;th>Actions&#60;/th><br>
+            &#60;/tr><br><br>
+            {students && <br>
+              students.length > 0 &&<br>
+              students.map((student, index) => (<br>
+                &#60;tr key={index}><br>
+                  &#60;td>{student.name}&#60;/td><br>
+                  &#60;td>{student.nic}&#60;/td><br>
+                  &#60;td>{student.age}&#60;/td><br>
+                  &#60;td>{student.courseId && student.courseId.courseName}&#60;/td><br>
+                      {/* -------ACTIONS---------- */}
+                  &#60;td><br>
+                    &#60;button id={student._id} onClick={(e) => onEditClick(e)}><br>
+                      {isEditClick && student._id === editId ? "Cancel" : "Update"}<br>
+                    &#60;/button><br><br>
+                        {isEditClick && student._id === editId && (<br>
+                          &#60;button onClick={(e) => updateData(e)}>Save&#60;/button><br>
+                        )}<br><br>
+                      &#60;button id={student._id} onClick={(e) => deleteStudent(e)}><br>
+                        Delete<br>
+                      &#60;/button><br>
+                  &#60;/td><br>
+                    {/* ------------------------ */}<br>
+                &#60;/tr><br>
+              ))}<br>
+          &#60;/table><br>
+        &#60;/div><br>
+      );
+      <br>
+      };<br>
+      
+      export default StudentPage;<br><br>
+
+  <h2>AddTeacher.js</h2>
+
+      import React, { useEffect, useState } from "react";<br>
+      import axios from "axios";<br><br>
+      
+      const AddTeacher = () => {<br><br>
+        
+          const [name, setname,] = useState("");<br>
+          const [salary, setsalary,] = useState("");<br><br>
+          
+          const sendData = (e) => {<br>
+              e.preventDefault();<br>
+                  
+              const newTeacher ={    <br>
+                  name,
+                  salary,
+              };<br><br>
+          
+              axios.post("http://localhost:9000/teacher/add", newTeacher).then(()=>{<br>
+                  alert("Teacher Added");  <br>          
+                        
+                  }).catch((err)=>{<br>
+                      alert(err)<br>
+                  })<br>
+              }
+              <br><br>
+              return(<br>
+          
+                  &#60;div ><br>
+      
+                      &#60;h2><br>
+                          Add Teachers<br>
+                      &#60;/h2><br><br>
+          
+                      &#60;form onSubmit={sendData} >  <br>  
+                          &#60;div><br>
+                              &#60;label htmlFor="name">Name  &#60;/label><br>
+                              &#60;input type="text" id="name"  required<br>
+                              onChange = {(e) => {<br>
+                                  setname(e.target.value);<br>
+                              }}   <br>
+                              /><br><br>
+                          &#60;/div><br>
+                          &#60;div><br>
+                              &#60;label htmlFor="name">Salary  &#60;/label><br>
+                              &#60;input type="text"  id="salary"  required<br>
+                              onChange = {(e) => {<br>
+                                  setsalary(e.target.value);<br>
+                              }}   <br>
+                              /><br>
+                          &#60;/div>   <br><br>   
+                          &#60;button type="submit"  id = "#">Add&#60;/button><br>
+                      &#60;/form> <br>
+                      
+                  &#60;/div><br>
+              )<br>
+          }<br>
+      
+      export default AddTeacher;<br><br>
+
+
+  <h2>ViewTeacher.js</h2>
+
+      import React, { useEffect, useState } from "react";<br>
+      import axios from "axios";<br><br>
+      
+      const ViewTacher =()=> {<br><br>
+      
+      const [Teacher, setTeacher] = useState([]);<br><br>
+      
+      useEffect(() => {<br>
+          axios.get(`http://localhost:9000/teacher/`)<br>
+              .then((response) => {<br>
+                  setTeacher(response.data);<br>
+              })<br>
+      }, [])<br>
+      
+      const deleteTeacher = (e) => {<br>
+          e.preventDefault();<br>
+          axios<br>
+            .delete(`http://localhost:9000/teacher/${e.target.id}`)<br>
+            .then(() => {<br>
+              axios.get(`http://localhost:9000/teacher/`).then((res) => {<br>
+                setTeacher(res.data);<br>
+              });<br>
+            })<br>
+            .catch((err) => {<br>
+              alert(err.message);<br>
+            });<br>
+        };<br><br>
+      
+      return (<br>
+          &#60;div><br>
+            &#60;h1>All Teacher&#60;/h1><br><br>
+      
+              &#60;table><br>
+                  &#60;thead><br>
+                      &#60;tr><br>
+                          &#60;th>Name&#60;/th><br>
+                          &#60;th>Salary&#60;/th><br>
+                      &#60;/tr><br>
+                  &#60;/thead><br>
+                  &#60;tbody><br>
+                      {Teacher.map((teacher)=>{<br>
+                      return &#60;tr><br>
+                              &#60;td>{teacher.name}&#60;/td><br>
+                              &#60;td>{teacher.salary}&#60;/td><br>
+                              &#60;td><br>
+                                  &#60;button id={teacher._id} onClick={(e) => deleteTeacher(e)}><br><br>
+                                      Delete<br>
+                                  &#60;/button><br>
+                              &#60;/td><br>
+                              &#60;/tr><br>
+                          })}<br>
+                          
+                      &#60;/tbody><br>
+                  &#60;/table><br>
+      
+          &#60;/div><br>
+        );<br>
+      }<br>
+      
+      export default ViewTacher;<br><br>
+
+  <h2>Home.js</h2>
+
+      import React from "react";<br>
+      import { Link } from "react-router-dom";<br><br>
+      
+      const Home = () => {<br>
+        return (<br>
+          &#60;div><br><br>
+            &#60;Link to="student"><br>
+              &#60;button>Manage Students&#60;/button><br>
+            &#60;/Link><br><br>
+            &#60;Link to="course"><br>
+              &#60;button>Manage Courses&#60;/button><br>
+            &#60;/Link><br><br>
+            &#60;Link to="addteacher"><br>
+              &#60;button>Manage Teacher&#60;/button><br>
+            &#60;/Link><br><br>
+            &#60;Link to="viewteacher"><br>
+              &#60;button>View Teachers&#60;/button><br>
+            &#60;/Link><br><br>
+          &#60;/div><br>
+        );<br>
+      };
+      <br>
+      export default Home;<br><br>
+
+  <h2>App.js</h2>
+
+      import React from "react";<br>
+      import { BrowserRouter as Router, Routes, Route } from "react-router-dom";<br>
+      import AddTeacher from "./pages/AddTeacher";<br>
+      import CoursePage from "./pages/Course";<br>
+      import Home from "./pages/Home";<br>
+      import StudentPage from "./pages/Student";<br>
+      import ViewTacher from "./pages/ViewTeacher";<br>
+      
+      const App = () => {<br>
+        return (<br>
+          &#60;div><br>
+            &#60;Router><br>
+              &#60;Routes><br>
+                &#60;Route path="/student" element={&#60;StudentPage />} /><br>
+                &#60;Route path="/course" element={&#60;CoursePage />} /><br>
+                &#60;Route path="/addteacher" element={&#60;AddTeacher />} /><br>
+                &#60;Route path="/viewteacher" element={&#60;ViewTacher />} /><br>
+                &#60;Route path="/" element={&#60;Home />} /><br>
+              &#60;/Routes><br>
+            &#60;/Router><br>
+          &#60;/div><br>
+        );<br>
+      };<br>
+      
+      export default App;<br><br>
+
+  <h2>index.js</h2>
+
+      import React from "react";<br>
+      import ReactDOM from "react-dom";<br>
+      import App from "./App";<br>
+      
+      ReactDOM.render(&#60;App />, document.getElementById("root"));<br>
+
+  ________________________________________________________________________
+
+  <h2>user.model.js</h2>
+
+          const mongoose = require("mongoose");<br><br>
+          
+          const user_schema = new mongoose.Schema({<br>
+            useremail: {<br>
+              type: String,<br>
+              required: true,<br>
+            },<br><br>
+          
+            userpassword: {<br>
+              type: String,<br>
+              required: true,<br>
+            },<br>
+          });<br><br>
+      
+      
+      const User = mongoose.model("user", user_schema);<br>
+      module.exports = User;<br><br>
+      
+  <h2>user.controller.js</h2>
+
+      const User = require("../models/user.model");<br><br>
+      
+      const registerUser = async (ctx)=>{<br>
+          try {<br>
+              const { useremail,userpassword} = ctx.request.body;<br><br>
+      
+              if(!useremail || !userpassword){<br>
+                  throw new Error("Please provide all values");<br>
+              }<br><br>
+      
+              const alreadyExist = await User.findOne({useremail});<br><br>
+      
+              if(alreadyExist){<br>
+                  throw new Error("Already Exisits");<br>
+              }<br><br>
+      
+              const user = await User.create({useremail,userpassword});<br>
+              return (ctx.body = user);<br>
+          } catch (error) {<br>
+              return (ctx.body = {message:error.message});<br>
+          }<br>
+      };<br><br>
+      
+      const login = async (ctx)=>{<br>
+          try {<br>
+              const { useremail, userpassword } = ctx.request.body;<br><br>
+      
+              if (!useremail || !userpassword) {<br>
+                throw new Error("Please provide all values");<br>
+              }<br>
+              const user = await User.findOne({useremail});<br>
+              const matchPassword = await User.findOne({ userpassword });<br><br>
+      
+              if(!user ||!matchPassword){<br>
+                  ctx.throw (401,"Invalid credentials");<br>
+              }<br>
+              
+              return (ctx.body = user);<br>
+          } catch (error) {<br>
+              return (ctx.body = { message: error.message });<br>
+          }<br>
+      };<br><br>
+      
+      module.exports={<br>
+          registerUser,<br>
+          login,<br>
+      }<br>
+
+  <h2>user.routes.js</h2>
+
+      const KoaRouter = require("koa-router");<br>
+      const router = new KoaRouter({prefix: "/user"});<br>
+      
+      const {<br>
+          registerUser,<br>
+          login,<br>
+      }=require("../controller/user.controller");<br>
+      
+      router.post("/register", registerUser);<br>
+      router.post("/login",login);<br>
+      
+      module.exports = router;<br>
+
+  <h2>login.js</h2>
+
+      import React, { useState } from 'react'<br>
+      import axios from "axios";<br>
+      import ErrorMessage from './ErrorMessage';<br>
+      
+      const Login = () => {<br><br>
+      
+        const [useremail, setUserEmail] = useState("");<br>
+        const [userpassword, setUserPassword] = useState("");<br>
+        const [error,setError] = useState(false);<br>
+        const [message, setMessage] = useState(null);<br><br>
+      
+        
+        
+        const saveData =async (e)=>{<br>
+          e.preventDefault();<br>
+          const userInfo = localStorage.getItem("userInfo");<br>
+          try {<br>
+      
+            const config = {<br>
+              headers: {<br>
+                "Content-type": "application/json"<br>
+              }<br>
+            };<br><br>
+            
+            const {data} = await axios.post(<br>
+              "http://localhost:9000/user/login",<br>
+              {useremail,userpassword},config<br>
+            );<br>
+            console.log(data);<br>
+            localStorage.setItem("userInfo",JSON.stringify(data));<br>
+            
+          } catch (error) {<br>
+            setError(error.resposne.data.message);<br>
+          }  <br><br>
+      
+          if (userInfo) {<br>
+            setMessage("Success");<br>
+            window.location.assign("/home");<br>
+          
+          } else {<br>
+            setMessage("Invalid Credentials"); <br>    
+          }<br>
+        }<br><br>
+        return (<br>
+          &#60;div><br> 
+            &#60;h1>User Login&#60;/h1><br> 
+            {message && &#60;ErrorMessage variant="danger">{message}&#60;/ErrorMessage>}<br> 
+            {error && &#60;ErrorMessage variant="danger">{error}&#60;/ErrorMessage>}<br> 
+            &#60;form onSubmit={saveData}><br> <br> 
+              &#60;label>User Email&#60;/label><br> 
+              &#60;input<br> 
+                type="email"<br> 
+                placeholder="Enter your email"<br> 
+                value={useremail}<br> 
+                style={{ margin: 5 <br> 
+                onChange={(e) => setUserEmail(e.target.value)}<br> 
+              /><br> <br> 
+              &#60;br>&#60;/br><br> 
+              &#60;label>User Password&#60;/label><br> 
+              &#60;input<br> 
+                type="password"<br> 
+                placeholder="Enter your password"<br> 
+                value={userpassword}<br> 
+                style={{ margin: 5 }}<br> 
+                onChange={(e) => setUserPassword(e.target.value)}<br> 
+              /><br> <br> 
+              &#60;br>&#60;/br><br> 
+              &#60;button style={{ margin: 5 }}>Submit&#60;/button><br> 
+              New user? &#60;a href="/register">Register&#60;/a><br> 
+            &#60;/form><br> 
+          &#60;/div><br> 
+        );<br> 
+      }<br> 
+      
+      export default Login;<br> 
+
+  <h2>register.js</h2>
+
+      import React from 'react'<br> 
+      import { useState } from 'react';<br> 
+      import ErrorMessage from './ErrorMessage';<br> 
+      import axios from 'axios';<br> 
+      const Register = () => {<br> 
+        const [useremail, setUserEmail] = useState("");<br> 
+        const [userpassword, setUserPassword] = useState("");<br> 
+        const [confirmuserpassword, setConfirmUserPassword] = useState("");<br> 
+      const [message, setMessage] = useState(null);<br> 
+      const [error, setError]= useState(false);<br> <br> 
+        
+        const saveData = async (e) => {<br> 
+          e.preventDefault();<br> <br> 
+      
+          if(userpassword !== confirmuserpassword){<br>  
+              setMessage('Passwords are not matching')<br> 
+          }else{<br> 
+            setMessage(null);<br> 
+            try {<br> 
+              const config = {<br> 
+                headers: {<br> 
+                  "Content-type": "application/json",<br> 
+                },<br> 
+              };<br> <br> 
+      
+              const { data } = await axios.post(<br> 
+                "http://localhost:9000/user/register",<br> 
+                { useremail, userpassword },<br> 
+                config<br> 
+              );<br> 
+              console.log(data);<br> 
+              localStorage.setItem("userInfo", JSON.stringify(data));<br> 
+              window.location.assign("/home");<br> 
+            } catch (error) {<br> 
+              setError(error.resposne.data.message);<br> 
+            }<br> 
+          }<br> <br> 
+          
+        };<br> 
+        return (<br> 
+          &#60;div><br>
+            &#60;h1>User Register&#60;/h1><br>
+            {error && &#60;ErrorMessage variant="danger">{error}&#60;/ErrorMessage>}<br>
+            {message && &#60;ErrorMessage variant="danger">{message}&#60;/ErrorMessage>}<br>
+            &#60;form onSubmit={saveData}><br><br>
+              &#60;label>User Email&#60;/label><br>
+              &#60;input<br>
+                type="email"<br>
+                placeholder="Enter your email"<br>
+                value={useremail}<br>
+                style={{ margin: 5 }}<br>
+                onChange={(e) => setUserEmail(e.target.value)}<br>
+              /><br><br>
+              &#60;br>&#60;/br><br>
+              &#60;label>User Password&#60;/label><br>
+              &#60;input<br>
+                type="password"<br>
+                placeholder="Enter your password"<br>
+                value={userpassword}<br>
+                style={{ margin: 5 }}<br>
+                onChange={(e) => setUserPassword(e.target.value)}<br>
+              /><br><br><br>
+              &#60;br>&#60;/br><br>
+              &#60;label>Confirm Password&#60;/label><br>
+              &#60;input<br>
+                type="password"<br>
+                placeholder="Enter your password"<br>
+                value={confirmuserpassword}<br>
+                style={{ margin: 5 }}<br>
+                onChange={(e) => setConfirmUserPassword(e.target.value)}<br>
+              /><br>
+              &#60;br>&#60;/br><br>
+              &#60;button style={{ margin: 5 }}>Submit&#60;/button><br>
+              Already user? &#60;a href="/">login&#60;/a><br>
+            &#60;/form><br>
+          &#60;/div><br>
+        );<br>
+      }<br><br>
+      
+      export default Register;<br><br>
+
+  ________________________________________________________________________
+
+    <h2> package.json (backend)</h2>
+      
+      {<br>
+        "name": "backend",<br>
+        "version": "1.0.0",<br>
+        "description": "",<br>
+        "main": "index.js",<br>
+        "scripts": {<br>
+          "start": "node src/index.js",<br>
+          "dev": "nodemon src/index.js"<br>
+        },<br>
+        "author": "",<br>
+        "license": "ISC",<br>
+        "dependencies": {<br>
+          "@koa/cors": "^3.3.0",<br>
+          "dotenv": "^16.0.1",<br>
+          "koa": "^2.13.4",<br>
+          "koa-bodyparser": "^4.3.0",<br>
+          "koa-json": "^2.0.2",<br>
+          "koa-router": "^10.1.1",<br>
+          "mongoose": "^6.4.0",<br>
+          "nodemon": "^2.0.16"<br>
+        }<br>
+      }<br><br>
+      
+      <h2>package.json (frontend)</h2>
+      
+      {<br>
+        "name": "af-react-app",<br>
+        "version": "1.0.0",<br>
+        "description": "",<br>
+        "main": "index.js",<br>
+        "scripts": {<br>
+          "start": "webpack-dev-server --mode development --open --hot --port 3000",<br>
+          "build": "webpack --mode production"<br>
+        },<br>
+        "keywords": [],<br>
+        "author": "",<br>
+        "license": "ISC",<br>
+        "dependencies": {<br>
+          "axios": "^0.27.2",<br>
+          "dotenv": "^16.0.1",<br>
+          "react": "^18.1.0",<br>
+          "react-dom": "^18.1.0",<br>
+          "react-router-dom": "^6.3.0"<br>
+        },<br>
+        "devDependencies": {<br>
+          "@babel/core": "^7.18.2",<br>
+          "@babel/preset-env": "^7.18.2",<br>
+          "@babel/preset-react": "^7.17.12",<br>
+          "babel-loader": "^8.2.5",<br>
+          "html-webpack-plugin": "^5.5.0",<br>
+          "webpack": "^5.73.0",<br>
+          "webpack-cli": "^4.9.2",<br>
+          "webpack-dev-server": "^4.9.2"<br>
+        }<br>
+      }<br>
+
+
+    </section>
+  </body>
+</html>
